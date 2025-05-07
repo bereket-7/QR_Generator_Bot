@@ -49,7 +49,18 @@ def get_user(username: str) -> Optional[Dict]:
     return {'user_id': user[0], 'username': user[1], 'password': user[2]} if user else None
 
 
+def get_user_by_id(user_id: int) -> Optional[Dict]:
+    """Fetch user by Telegram user_id."""
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return {'user_id': user[0], 'username': user[1], 'password': user[2]} if user else None
+
 # QR code management functions
+
+
 def save_qr(user_id: int, content: str, image_path: str):
     conn = sqlite3.connect('qr_bot.db')
     cursor = conn.cursor()
