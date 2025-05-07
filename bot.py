@@ -8,7 +8,7 @@ from database import add_user, get_user, get_user_by_id, save_qr, get_user_qrs, 
 import qrcode
 from io import BytesIO
 import os
-
+from config import Config
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -91,6 +91,15 @@ async def login_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Invalid credentials. Try /start again.")
         return ConversationHandler.END
 
+
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user_by_id(update.effective_user.id)
+    await update.message.reply_text(
+        f"👤 Your Profile:\n"
+        f"Username: {user['username']}\n"
+        f"QRs Generated: {len(get_user_qrs(user['user_id']))}"
+    )
+
 # QR Generation flow
 
 
@@ -155,7 +164,7 @@ async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    application = Application.builder().token("YOUR_BOT_TOKEN").build()
+    application = Application.builder().token(Config.BOT_TOKEN).build()
 
     # Auth Conversation Handler
     auth_conv_handler = ConversationHandler(
