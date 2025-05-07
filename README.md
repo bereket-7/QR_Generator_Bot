@@ -24,8 +24,8 @@
 ### **1. Clone the Repository**
 
 ```bash
-git clone https://github.com/bereket-7/qr-bot.git
-cd qr-bot
+git clone https://github.com/bereket-7/QR_Generator_Bot.git
+cd QR_Generator_Bot
 ```
 
 ### **2. Install Dependencies**
@@ -58,7 +58,7 @@ python bot.py
 ## **Project Structure**
 
 ```
-qr-bot/
+QR_Generator_Bot/
 ├── bot.py               # Main bot logic (handlers, commands)
 ├── database.py          # Database setup & utilities
 ├── requirements.txt     # Dependencies
