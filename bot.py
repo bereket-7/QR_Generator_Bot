@@ -9,7 +9,9 @@ import qrcode
 from io import BytesIO
 import os
 import pyshorteners
+from encryption import encrypt_text, decrypt_text
 from config import Config
+
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -180,6 +182,29 @@ async def shorten(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Short URL: {short_url}")
 
 
+async def encrypt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /encrypt <text>")
+        return
+
+    text = " ".join(context.args)
+    encrypted = encrypt_text(text)
+    await update.message.reply_text(f"🔒 Encrypted:\n`{encrypted}`", parse_mode="Markdown")
+
+
+async def decrypt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /decrypt <encrypted_text>")
+        return
+
+    encrypted = " ".join(context.args)
+    try:
+        decrypted = decrypt_text(encrypted)
+        await update.message.reply_text(f"🔓 Decrypted:\n`{decrypted}`", parse_mode="Markdown")
+    except:
+        await update.message.reply_text("❌ Invalid encrypted text!")
+
+
 def main():
     application = Application.builder().token(Config.BOT_TOKEN).build()
 
@@ -217,6 +242,9 @@ def main():
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("shorten", shorten))
     application.add_handler(CommandHandler("roll", roll))
+    application.add_handler(CommandHandler("meme", meme))
+    application.add_handler(CommandHandler("encrypt", encrypt_cmd))
+    application.add_handler(CommandHandler("decrypt", decrypt_cmd))
 
     # Start the bot
     application.run_polling()
