@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.env
+*.sqlite
+*.db
+*.log
+*.pyc
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Project Specific
+qr_codes/
+qr_bot.db
+.env
+config.py
+
+# OS generated
+.DS_Store
+Thumbs.db
