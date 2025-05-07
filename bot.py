@@ -163,6 +163,10 @@ async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("You're not registered. Use /start to sign up!")
 
 
+async def roll(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_dice(emoji="🎲")
+
+
 def main():
     application = Application.builder().token(Config.BOT_TOKEN).build()
 
