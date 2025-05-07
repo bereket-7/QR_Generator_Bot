@@ -8,6 +8,7 @@ from database import add_user, get_user, get_user_by_id, save_qr, get_user_qrs, 
 import qrcode
 from io import BytesIO
 import os
+import pyshorteners
 from config import Config
 # Enable logging
 logging.basicConfig(
@@ -167,6 +168,18 @@ async def roll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_dice(emoji="🎲")
 
 
+async def meme(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text_top, text_bottom = context.args[0], context.args[1]
+    await update.message.reply_photo(photo=open("meme.png", "rb"))
+
+
+async def shorten(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = context.args[0]
+    s = pyshorteners.Shortener()
+    short_url = s.tinyurl.short(url)
+    await update.message.reply_text(f"Short URL: {short_url}")
+
+
 def main():
     application = Application.builder().token(Config.BOT_TOKEN).build()
 
@@ -201,6 +214,9 @@ def main():
     application.add_handler(CommandHandler('myqrs', list_qrs))
     application.add_handler(CommandHandler('deleteqr', delete_qr_command))
     application.add_handler(CommandHandler('hello', hello))
+    application.add_handler(CommandHandler("profile", profile))
+    application.add_handler(CommandHandler("shorten", shorten))
+    application.add_handler(CommandHandler("roll", roll))
 
     # Start the bot
     application.run_polling()
