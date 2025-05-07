@@ -12,6 +12,8 @@ import os
 import pyshorteners
 from encryption import encrypt_text, decrypt_text
 from config import Config
+from telegram import BotCommand, MenuButtonCommands
+from telegram.constants import ParseMode
 
 # Enable logging
 logging.basicConfig(
@@ -238,8 +240,87 @@ async def decrypt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Invalid encrypted text!")
 
 
+async def post_init(application: Application) -> None:
+    """Set up bot commands menu and description"""
+    commands = [
+        BotCommand("start", "Start the bot"),
+        BotCommand("help", "Show all commands"),
+        BotCommand("profile", "View your profile"),
+        BotCommand("newqr", "Generate new QR code"),
+        BotCommand("myqrs", "List your saved QRs"),
+        BotCommand("deleteqr", "Delete a QR code"),
+        BotCommand("shorten", "Shorten a URL"),
+        BotCommand("logout", "Log out of your account"),
+    ]
+    await application.bot.set_my_commands(commands)
+    await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+
+# Add this new help command handler
+
+
+async def show_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show all available commands with nice formatting"""
+    help_text = """
+🌟 *QR Code Bot Help* 🌟
+
+🔹 *Account Commands:*
+/start - Start or reset the bot
+/profile - View your profile
+/logout - Log out of your account
+
+🔹 *QR Code Commands:*
+/newqr - Generate a new QR code
+/myqrs - List your saved QR codes
+/deleteqr [id] - Delete a QR code
+
+🔹 *Utility Commands:*
+/shorten [url] - Shorten a long URL
+/roll - Roll a dice (just for fun!)
+/help - Show this help message
+
+💡 *Pro Tip:* You can just send any text or URL and I'll automatically generate a QR code for you!
+"""
+    await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
+
+
+async def show_command_hint(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show command hint when user types '/'"""
+    if update.message.text == "/":
+        await update.message.reply_text(
+            "🔍 Try one of these commands:",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(
+                    "Show All Commands", callback_data="show_help")]
+            ])
+        )
+
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle direct messages by auto-generating QR codes"""
+    user = get_user_by_id(update.effective_user.id)
+    if not user:
+        await update.message.reply_text("Please /start to register first!")
+        return
+
+    if update.message.text and not update.message.text.startswith('/'):
+        # Auto-generate QR for direct text/URL messages
+        content = update.message.text
+        user_id = update.effective_user.id
+        qr_path = generate_qr(content, user_id)
+        save_qr(user_id, content, qr_path)
+
+        with open(qr_path, 'rb') as qr_file:
+            await update.message.reply_photo(
+                photo=qr_file,
+                caption=f"Here's your QR code for: {content}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+
+
 def main():
     application = Application.builder().token(Config.BOT_TOKEN).build()
+
+    application.post_init = post_init
 
     # Auth Conversation Handler
     auth_conv_handler = ConversationHandler(
@@ -253,7 +334,8 @@ def main():
             LOGIN_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, login_username)],
             LOGIN_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, login_password)],
         },
-        fallbacks=[]
+        fallbacks=[],
+        per_message=True
     )
 
     # QR Generation Conversation Handler
@@ -280,6 +362,14 @@ def main():
     application.add_handler(CommandHandler("decrypt", decrypt_cmd))
     application.add_handler(CommandHandler("logout", logout))
     application.add_handler(CommandHandler("confirm_logout", confirm_logout))
+    application.add_handler(CommandHandler("help", show_help))
+
+    application.add_handler(MessageHandler(
+        filters.Text("/"), show_command_hint))
+    application.add_handler(CallbackQueryHandler(
+        show_help, pattern="^show_help$"))
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_message))
 
     # Start the bot
     application.run_polling()
