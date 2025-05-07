@@ -1,10 +1,11 @@
+from secrets import token_urlsafe
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     filters, ContextTypes, ConversationHandler
 )
-from database import add_user, get_user, get_user_by_id, save_qr, get_user_qrs, delete_qr
+from database import add_logout_token, add_user, delete_session, get_user, get_user_by_id, save_qr, get_user_qrs, delete_qr, validate_logout
 import qrcode
 from io import BytesIO
 import os
@@ -103,9 +104,41 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"QRs Generated: {len(get_user_qrs(user['user_id']))}"
     )
 
+
+async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    token = token_urlsafe(16)
+
+    # Store logout token in DB
+    add_logout_token(user_id, token)
+
+    # Send confirmation with secure token
+    await update.message.reply_text(
+        f"⚠️ Confirm logout by clicking: /confirm_logout {token}\n"
+        "This token expires in 5 minutes.",
+        parse_mode="Markdown"
+    )
+
+
+async def confirm_logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not context.args:
+        await update.message.reply_text("Missing logout token!")
+        return
+
+    token = context.args[0]
+    if validate_logout(user_id, token):
+        delete_session(user_id)
+        # Clear user-specific data
+        await update.message.reply_text(
+            "✅ Successfully logged out!\n"
+            "All your sessions have been terminated."
+        )
+    else:
+        await update.message.reply_text("❌ Invalid or expired token!")
+
+
 # QR Generation flow
-
-
 async def generate_qr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Send the text/URL you want to convert to QR:")
     return QR_CONTENT
