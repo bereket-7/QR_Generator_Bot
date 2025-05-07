@@ -26,3 +26,6 @@ config.py
 # OS generated
 .DS_Store
 Thumbs.db
+
+.encryption_key
+*.key
