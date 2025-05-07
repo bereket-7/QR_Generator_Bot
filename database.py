@@ -1,0 +1,131 @@
+import sqlite3
+from typing import Optional, Dict, List
+
+
+def init_db():
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+
+    # Users table (for authentication)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY,
+        username TEXT UNIQUE,
+        password TEXT
+    )
+    ''')
+
+    # QR codes table (for CRUD operations)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS qr_codes (
+        qr_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        content TEXT,
+        image_path TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+    )
+    ''')
+    conn.commit()
+    conn.close()
+
+# User management functions
+
+
+def add_user(user_id: int, username: str, password: str):
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO users VALUES (?, ?, ?)',
+                   (user_id, username, password))
+    conn.commit()
+    conn.close()
+
+
+def get_user(username: str) -> Optional[Dict]:
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+    user = cursor.fetchone()
+    conn.close()
+    return {'user_id': user[0], 'username': user[1], 'password': user[2]} if user else None
+
+
+def get_user_by_id(user_id: int) -> Optional[Dict]:
+    """Fetch user by Telegram user_id."""
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return {'user_id': user[0], 'username': user[1], 'password': user[2]} if user else None
+
+# Add to database.py
+
+
+def add_logout_token(user_id: int, token: str):
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS sessions (
+        user_id INTEGER PRIMARY KEY,
+        logout_token TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+    )
+    ''')
+    cursor.execute('''
+    INSERT OR REPLACE INTO sessions VALUES (?, ?)
+    ''', (user_id, token))
+    conn.commit()
+    conn.close()
+
+
+def validate_logout(user_id: int, token: str) -> bool:
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT 1 FROM sessions WHERE user_id = ? AND logout_token = ?
+    ''', (user_id, token))
+    exists = cursor.fetchone() is not None
+    conn.close()
+    return exists
+
+
+def delete_session(user_id: int):
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+
+# QR code management functions
+
+
+def save_qr(user_id: int, content: str, image_path: str):
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO qr_codes (user_id, content, image_path) VALUES (?, ?, ?)',
+                   (user_id, content, image_path))
+    conn.commit()
+    conn.close()
+
+
+def get_user_qrs(user_id: int) -> List[Dict]:
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute(
+        'SELECT qr_id, content FROM qr_codes WHERE user_id = ?', (user_id,))
+    qrs = [{'qr_id': row[0], 'content': row[1]} for row in cursor.fetchall()]
+    conn.close()
+    return qrs
+
+
+def delete_qr(user_id: int, qr_id: int):
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute(
+        'DELETE FROM qr_codes WHERE user_id = ? AND qr_id = ?', (user_id, qr_id))
+    conn.commit()
+    conn.close()
+
+
+# Initialize the database on import
+init_db()
