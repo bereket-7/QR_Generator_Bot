@@ -278,6 +278,8 @@ def main():
     application.add_handler(CommandHandler("meme", meme))
     application.add_handler(CommandHandler("encrypt", encrypt_cmd))
     application.add_handler(CommandHandler("decrypt", decrypt_cmd))
+    application.add_handler(CommandHandler("logout", logout))
+    application.add_handler(CommandHandler("confirm_logout", confirm_logout))
 
     # Start the bot
     application.run_polling()
