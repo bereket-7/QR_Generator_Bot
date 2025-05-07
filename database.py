@@ -58,6 +58,44 @@ def get_user_by_id(user_id: int) -> Optional[Dict]:
     conn.close()
     return {'user_id': user[0], 'username': user[1], 'password': user[2]} if user else None
 
+# Add to database.py
+
+
+def add_logout_token(user_id: int, token: str):
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS sessions (
+        user_id INTEGER PRIMARY KEY,
+        logout_token TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+    )
+    ''')
+    cursor.execute('''
+    INSERT OR REPLACE INTO sessions VALUES (?, ?)
+    ''', (user_id, token))
+    conn.commit()
+    conn.close()
+
+
+def validate_logout(user_id: int, token: str) -> bool:
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT 1 FROM sessions WHERE user_id = ? AND logout_token = ?
+    ''', (user_id, token))
+    exists = cursor.fetchone() is not None
+    conn.close()
+    return exists
+
+
+def delete_session(user_id: int):
+    conn = sqlite3.connect('qr_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+
 # QR code management functions
 
 
