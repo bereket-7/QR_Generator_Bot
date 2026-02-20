@@ -3,3 +3,8 @@ qrcode==7.4.2
 Pillow==10.0.0
 pyshorteners==1.0.1
 cryptography==44.0.3
+bcrypt==4.1.2
+pyjwt==2.8.0
+python-dotenv==1.0.0
+redis==5.0.1
+validators==0.22.0
