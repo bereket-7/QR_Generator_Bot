@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Redis for sessions and caching
+  redis:
+    image: redis:7-alpine
+    container_name: qrbot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Main Telegram Bot
+  bot:
+    build: .
+    container_name: qrbot-main
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=production
+    volumes:
+      - ./logs:/app/logs
+      - ./qr_codes:/app/qr_codes
+      - ./qr_bot.db:/app/qr_bot.db
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - qrbot-network
+
+  # Admin Panel (Flask)
+  admin-panel:
+    build: .
+    container_name: qrbot-admin
+    restart: unless-stopped
+    command: python admin_panel/app.py
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=production
+    volumes:
+      - ./logs:/app/logs
+      - ./qr_bot.db:/app/qr_bot.db
+    ports:
+      - "5000:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - qrbot-network
+
+  # REST API (FastAPI)
+  api:
+    build: .
+    container_name: qrbot-api
+    restart: unless-stopped
+    command: python api/main.py
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ENVIRONMENT=production
+    volumes:
+      - ./logs:/app/logs
+      - ./qr_codes:/app/qr_codes
+      - ./qr_bot.db:/app/qr_bot.db
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - qrbot-network
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: qrbot-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+      - admin-panel
+    networks:
+      - qrbot-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  qrbot-network:
+    driver: bridge
